@@ -18,6 +18,8 @@ final class CustomBootstrapIconFontGenerateForm extends FormBase {
     $config = $this->config('custom_bootstrap_icon_font.settings');
     $request = $this->getRequest();
 
+    $form['#attached']['library'][] = 'custom_bootstrap_icon_font/admin';
+
     $form['intro'] = [
       '#markup' => '<p>Configure a custom icon font based on Bootstrap Icons. Generation is performed via Drush for production/Composer friendliness.</p>',
     ];
@@ -202,19 +204,35 @@ final class CustomBootstrapIconFontGenerateForm extends FormBase {
     }
 
     $form['actions'] = ['#type' => 'actions'];
-    $form['actions']['submit'] = [
+    $form['actions']['save_group'] = [
+      '#type' => 'container',
+      '#attributes' => [
+        'class' => ['custom-bootstrap-icon-font-action'],
+      ],
+    ];
+    $form['actions']['save_group']['submit'] = [
       '#type' => 'submit',
       '#value' => $this->t('Save configuration'),
       '#button_type' => 'primary',
-      '#suffix' => '<div class="description">' . $this->t('Saves the settings only. Does not generate CSS or font files.') . '</div>',
+    ];
+    $form['actions']['save_group']['help'] = [
+      '#markup' => '<div class="description">' . $this->t('Saves the settings only. Does not generate CSS or font files.') . '</div>',
     ];
 
-    $form['actions']['build'] = [
+    $form['actions']['build_group'] = [
+      '#type' => 'container',
+      '#attributes' => [
+        'class' => ['custom-bootstrap-icon-font-action'],
+      ],
+    ];
+    $form['actions']['build_group']['build'] = [
       '#type' => 'submit',
       '#value' => $this->t('Save and build now'),
       '#submit' => ['::submitBuild'],
       '#button_type' => 'secondary',
-      '#suffix' => '<div class="description">' . $this->t('Saves settings and generates the CSS + font files immediately. Requires Node tooling (Fantasticon).') . '</div>',
+    ];
+    $form['actions']['build_group']['help'] = [
+      '#markup' => '<div class="description">' . $this->t('Saves settings and generates the CSS + font files immediately. Requires Node tooling (Fantasticon).') . '</div>',
     ];
 
     return $form;

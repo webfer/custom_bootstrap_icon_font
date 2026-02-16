@@ -1,0 +1,5 @@
+admin:
+  version: 1.x
+  css:
+    theme:
+      css/custom_bootstrap_icon_font.admin.css: {}
