@@ -32,9 +32,6 @@ web/sites/*/settings.ddev.php
 web/sites/*/settings.local.php
 web/sites/*/settings.php
 web/sites/*/default.settings.php
-tools/ansible/vars/provision_vault.yml
-tools/**/server.yml
-vault_pass.txt
 
 
 # Ignore paths that may contain temporary files
