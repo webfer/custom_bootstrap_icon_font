@@ -1,0 +1,7 @@
+custom_bootstrap_icon_font.generate:
+  path: '/admin/config/media/bootstrap-icon-font'
+  defaults:
+    _form: '\Drupal\custom_bootstrap_icon_font\Form\CustomBootstrapIconFontGenerateForm'
+    _title: 'Bootstrap Icon Font'
+  requirements:
+    _permission: 'administer custom bootstrap icon font'

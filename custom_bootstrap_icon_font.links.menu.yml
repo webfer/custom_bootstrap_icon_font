@@ -1,0 +1,6 @@
+custom_bootstrap_icon_font.generate:
+  title: 'Bootstrap Icon Font'
+  description: 'Generate a custom icon font (WOFF2) from selected Bootstrap Icons'
+  route_name: custom_bootstrap_icon_font.generate
+  parent: system.admin_config_media
+  weight: 101

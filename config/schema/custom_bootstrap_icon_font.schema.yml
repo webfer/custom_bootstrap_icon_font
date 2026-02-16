@@ -1,0 +1,24 @@
+custom_bootstrap_icon_font.settings:
+  type: config_object
+  label: 'Custom Bootstrap Icon Font settings'
+  mapping:
+    icons:
+      type: sequence
+      label: 'Selected icons'
+      sequence:
+        type: string
+    codepoints:
+      type: mapping
+      label: 'Icon codepoints'
+    font_name:
+      type: string
+      label: 'Font family name'
+    icons_source_dir:
+      type: string
+      label: 'Bootstrap Icons source directory (relative to DRUPAL_ROOT)'
+    generator_command:
+      type: string
+      label: 'Font generator command (fantasticon)'
+    version:
+      type: integer
+      label: 'Asset version'

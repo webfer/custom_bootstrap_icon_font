@@ -1,0 +1,6 @@
+icons: []
+codepoints: {}
+font_name: 'custom-bootstrap-icons'
+icons_source_dir: 'libraries/bootstrap-icons/icons'
+generator_command: 'npx fantasticon'
+version: 0

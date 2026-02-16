@@ -1,0 +1,35 @@
+<?php
+
+/**
+ * @file
+ * Primary module hooks for Custom Bootstrap Icon Font module.
+ */
+
+/**
+ * Implements hook_page_attachments().
+ */
+function custom_bootstrap_icon_font_page_attachments(array &$attachments) {
+
+  $config = \Drupal::config('custom_bootstrap_icon_font.settings');
+  $version = (int) ($config->get('version') ?? 0);
+
+  $css_uri = 'public://custom_bootstrap_icon_font/font/custom-bootstrap-icon-font.css';
+  $realpath = \Drupal::service('file_system')->realpath($css_uri);
+  if (!$realpath || !is_file($realpath)) {
+    return;
+  }
+
+  // Use a relative URL so it matches Drupal core/contrib patterns and works
+  // regardless of the current host.
+  $css_url = \Drupal::service('file_url_generator')->generateString($css_uri);
+  $href = $css_url . (str_contains($css_url, '?') ? '&' : '?') . 'v=' . $version;
+
+  $attachments['#attached']['html_head_link'][] = [
+    [
+      'rel' => 'stylesheet',
+      'href' => $href,
+    ],
+    TRUE,
+  ];
+}
+

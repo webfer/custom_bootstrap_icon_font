@@ -1,0 +1,5 @@
+services:
+  custom_bootstrap_icon_font.twig_extension:
+    class: Drupal\custom_bootstrap_icon_font\Twig\CustomBootstrapIconFontTwigExtension
+    tags:
+      - { name: twig.extension }

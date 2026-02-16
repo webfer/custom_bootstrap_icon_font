@@ -1,0 +1,4 @@
+administer custom bootstrap icon font:
+  title: 'Administer custom Bootstrap icon font'
+  description: 'Allows the user to select icons and generate a custom icon font (WOFF2) and CSS.'
+  restrict access: TRUE

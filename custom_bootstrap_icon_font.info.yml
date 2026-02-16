@@ -1,0 +1,6 @@
+name: 'Custom Bootstrap Icon Font'
+type: module
+description: 'Custom module to generate a custom font-family based on selected icons from the Bootstrap Icons font'
+package: Custom
+core_version_requirement: ^10 || ^11
+configure: custom_bootstrap_icon_font.generate
