@@ -1,0 +1,32 @@
+{
+  "name": "webfer/custom_bootstrap_icon_font",
+  "description": "Drupal module that generates a custom WOFF2 icon font from a selected subset of Bootstrap Icons and publishes matching CSS classes.",
+  "type": "drupal-module",
+  "license": "GPL-2.0-or-later",
+  "homepage": "https://github.com/webfer/custom_bootstrap_icon_font",
+  "support": {
+    "issues": "https://github.com/webfer/custom_bootstrap_icon_font/issues",
+    "source": "https://github.com/webfer/custom_bootstrap_icon_font"
+  },
+  "require": {
+    "drupal/core": "^10 || ^11"
+  },
+  "autoload": {
+    "psr-4": {
+      "Drupal\\custom_bootstrap_icon_font\\": "src/"
+    }
+  },
+  "suggest": {
+    "drush/drush": "Required to run the build command (drush di-font:build).",
+    "npm:fantasticon": "Required to generate the font assets; install via npm (e.g. `npm i -D fantasticon`) and use `npx fantasticon` (or set generator_command accordingly)."
+  },
+  "keywords": [
+    "drupal",
+    "drupal-module",
+    "bootstrap",
+    "bootstrap-icons",
+    "icons",
+    "woff2",
+    "font"
+  ]
+}
