@@ -1,5 +1,13 @@
-.custom-bootstrap-icon-font-action {
-  display: inline-block;
+/*
+ * Drupal admin themes may apply `display:flex` to `.form-actions .form-wrapper`,
+ * which would place our help text next to the button.
+ * Force our action wrapper to stack vertically.
+ */
+.form-actions .custom-bootstrap-icon-font-action.form-wrapper {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
   vertical-align: top;
   margin-right: 1rem;
   margin-bottom: 0.75rem;
@@ -13,8 +21,8 @@
 
 /* On narrow screens, stack actions cleanly. */
 @media (max-width: 48em) {
-  .custom-bootstrap-icon-font-action {
-    display: block;
+  .form-actions .custom-bootstrap-icon-font-action.form-wrapper {
+    display: flex;
     margin-right: 0;
   }
 }
