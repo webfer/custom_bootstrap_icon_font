@@ -1,0 +1,20 @@
+.custom-bootstrap-icon-font-action {
+  display: inline-block;
+  vertical-align: top;
+  margin-right: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Ensure the description appears underneath the button with a nice readable width. */
+.custom-bootstrap-icon-font-action .description {
+  margin-top: 0.25rem;
+  max-width: 42rem;
+}
+
+/* On narrow screens, stack actions cleanly. */
+@media (max-width: 48em) {
+  .custom-bootstrap-icon-font-action {
+    display: block;
+    margin-right: 0;
+  }
+}
