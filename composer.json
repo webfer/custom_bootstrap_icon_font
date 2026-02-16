@@ -14,7 +14,10 @@
   "autoload": {
     "psr-4": {
       "Drupal\\custom_bootstrap_icon_font\\": "src/"
-    }
+    },
+    "classmap": [
+      "src/"
+    ]
   },
   "suggest": {
     "drush/drush": "Required to run the build command (drush di-font:build).",
