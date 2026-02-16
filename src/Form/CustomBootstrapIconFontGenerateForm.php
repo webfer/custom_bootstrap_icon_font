@@ -31,7 +31,7 @@ final class CustomBootstrapIconFontGenerateForm extends FormBase {
           'aria-label' => $this->t('Status message'),
         ],
         'message' => [
-          '#markup' => '<p>' . $this->t('Configuration saved. Next: run <code>drush di-font:build</code>.') . '</p>',
+          '#markup' => '<p>' . $this->t('Configuration saved. Next: click <strong>Save and build now</strong> to generate the CSS + font files (or run <code>drush di-font:build</code>).') . '</p>',
         ],
       ];
     }
@@ -105,7 +105,7 @@ final class CustomBootstrapIconFontGenerateForm extends FormBase {
     ];
 
     $form['tooling']['drush_help'] = [
-      '#markup' => '<p><strong>Build command:</strong> <code> drush di-font:build</code></p><p>(Run this command to build the font-family and the CSS code.)</p>',
+      '#markup' => '<p><strong>Build assets:</strong> click <strong>Save and build now</strong> below, or run <code>drush di-font:build</code>.</p><p>This step generates the CSS file and the font files under <code>public://custom_bootstrap_icon_font/font/</code>.</p>',
     ];
 
     // Preview section (uses the generated CSS/font when present).
@@ -206,6 +206,7 @@ final class CustomBootstrapIconFontGenerateForm extends FormBase {
       '#type' => 'submit',
       '#value' => $this->t('Save configuration'),
       '#button_type' => 'primary',
+      '#suffix' => '<div class="description">' . $this->t('Saves the settings only. Does not generate CSS or font files.') . '</div>',
     ];
 
     $form['actions']['build'] = [
@@ -213,6 +214,7 @@ final class CustomBootstrapIconFontGenerateForm extends FormBase {
       '#value' => $this->t('Save and build now'),
       '#submit' => ['::submitBuild'],
       '#button_type' => 'secondary',
+      '#suffix' => '<div class="description">' . $this->t('Saves settings and generates the CSS + font files immediately. Requires Node tooling (Fantasticon).') . '</div>',
     ];
 
     return $form;
@@ -223,7 +225,7 @@ final class CustomBootstrapIconFontGenerateForm extends FormBase {
       return;
     }
 
-    $this->messenger()->addStatus($this->t('Configuration saved. Build assets with: @cmd', ['@cmd' => 'drush di-font:build']));
+    $this->messenger()->addStatus($this->t('Configuration saved. Next: click “Save and build now” to generate assets (or run: @cmd).', ['@cmd' => 'drush di-font:build']));
 
     $form_state->setRedirect('custom_bootstrap_icon_font.generate', [], [
       'query' => ['di_saved' => time()],

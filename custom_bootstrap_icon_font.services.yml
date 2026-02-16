@@ -6,4 +6,5 @@ services:
 
   custom_bootstrap_icon_font.builder:
     class: Drupal\custom_bootstrap_icon_font\Service\CustomBootstrapIconFontBuilder
-    arguments: ['@config.factory', '@file_system', '@cache.render', '@logger.factory']
+    arguments:
+      ['@config.factory', '@file_system', '@cache.render', '@logger.factory']
