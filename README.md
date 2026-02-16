@@ -296,8 +296,11 @@ custom_bootstrap_icon_font/
 
 ## 📜 License
 
-This module is proprietary software developed for [Tothomweb](https://tothomweb.com/). Reuse or modification requires permission from the maintainers.
+This project is licensed under the **GNU General Public License, version 2 or (at your option) any later version**.
+
+- SPDX identifier: `GPL-2.0-or-later`
+- Created by: WebFer
 
 ---
 
-_Maintained by [Tothomweb](https://tothomweb.com/) Development Team_ - [WebFer](https://www.linkedin.com/in/webfer/)
+\_Created and maintained by [WebFer](https://www.linkedin.com/in/webfer/)
