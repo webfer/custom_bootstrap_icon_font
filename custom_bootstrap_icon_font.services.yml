@@ -3,3 +3,7 @@ services:
     class: Drupal\custom_bootstrap_icon_font\Twig\CustomBootstrapIconFontTwigExtension
     tags:
       - { name: twig.extension }
+
+  custom_bootstrap_icon_font.builder:
+    class: Drupal\custom_bootstrap_icon_font\Service\CustomBootstrapIconFontBuilder
+    arguments: ['@config.factory', '@file_system', '@cache.render', '@logger.factory']

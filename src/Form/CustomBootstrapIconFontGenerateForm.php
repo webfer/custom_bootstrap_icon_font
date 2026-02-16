@@ -36,6 +36,20 @@ final class CustomBootstrapIconFontGenerateForm extends FormBase {
       ];
     }
 
+    if ($request->query->has('di_built')) {
+      $form['built'] = [
+        '#type' => 'container',
+        '#attributes' => [
+          'class' => ['messages', 'messages--status'],
+          'role' => 'status',
+          'aria-label' => $this->t('Status message'),
+        ],
+        'message' => [
+          '#markup' => '<p>' . $this->t('Build completed. Assets should now be available in public files.') . '</p>',
+        ],
+      ];
+    }
+
     $form['font_name'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Font family name'),
@@ -194,10 +208,52 @@ final class CustomBootstrapIconFontGenerateForm extends FormBase {
       '#button_type' => 'primary',
     ];
 
+    $form['actions']['build'] = [
+      '#type' => 'submit',
+      '#value' => $this->t('Save and build now'),
+      '#submit' => ['::submitBuild'],
+      '#button_type' => 'secondary',
+    ];
+
     return $form;
   }
 
   public function submitForm(array &$form, FormStateInterface $form_state): void {
+    if (!$this->saveConfiguration($form_state)) {
+      return;
+    }
+
+    $this->messenger()->addStatus($this->t('Configuration saved. Build assets with: @cmd', ['@cmd' => 'drush di-font:build']));
+
+    $form_state->setRedirect('custom_bootstrap_icon_font.generate', [], [
+      'query' => ['di_saved' => time()],
+    ]);
+  }
+
+  public function submitBuild(array &$form, FormStateInterface $form_state): void {
+    if (!$this->saveConfiguration($form_state)) {
+      return;
+    }
+
+    // Run the same build logic as the Drush command, but from the UI.
+    // This may take some time depending on your server and Node tooling.
+    $result = \Drupal::service('custom_bootstrap_icon_font.builder')->build();
+
+    foreach ($result['errors'] ?? [] as $message) {
+      $this->messenger()->addError($this->t((string) $message));
+    }
+    foreach ($result['messages'] ?? [] as $message) {
+      $this->messenger()->addStatus($this->t((string) $message));
+    }
+
+    if (!empty($result['success'])) {
+      $form_state->setRedirect('custom_bootstrap_icon_font.generate', [], [
+        'query' => ['di_built' => time()],
+      ]);
+    }
+  }
+
+  private function saveConfiguration(FormStateInterface $form_state): bool {
     $raw_lines = preg_split('/\r\n|\r|\n/', (string) $form_state->getValue('icons'));
 
     $icons = [];
@@ -209,26 +265,26 @@ final class CustomBootstrapIconFontGenerateForm extends FormBase {
     $icons = array_values(array_unique(array_filter($icons)));
 
     if (empty($icons)) {
-      $this->messenger()->addError($this->t('No icons provided.'));
-      return;
+      $form_state->setErrorByName('icons', $this->t('No icons provided.'));
+      return FALSE;
     }
 
     $font_name = trim((string) $form_state->getValue('font_name'));
     if ($font_name === '') {
-      $this->messenger()->addError($this->t('Font family name is required.'));
-      return;
+      $form_state->setErrorByName('font_name', $this->t('Font family name is required.'));
+      return FALSE;
     }
 
     $icons_source_dir = trim((string) $form_state->getValue(['tooling', 'icons_source_dir']));
     if ($icons_source_dir === '') {
-      $this->messenger()->addError($this->t('Bootstrap Icons source directory is required.'));
-      return;
+      $form_state->setErrorByName('tooling][icons_source_dir', $this->t('Bootstrap Icons source directory is required.'));
+      return FALSE;
     }
 
     $generator_command = trim((string) $form_state->getValue(['tooling', 'generator_command']));
     if ($generator_command === '') {
-      $this->messenger()->addError($this->t('Generator command is required.'));
-      return;
+      $form_state->setErrorByName('tooling][generator_command', $this->t('Generator command is required.'));
+      return FALSE;
     }
 
     $editable = $this->configFactory()->getEditable('custom_bootstrap_icon_font.settings');
@@ -243,11 +299,7 @@ final class CustomBootstrapIconFontGenerateForm extends FormBase {
       ->set('generator_command', $generator_command)
       ->save();
 
-    $this->messenger()->addStatus($this->t('Configuration saved. Build assets with: @cmd', ['@cmd' => 'drush di-font:build']));
-
-    $form_state->setRedirect('custom_bootstrap_icon_font.generate', [], [
-      'query' => ['di_saved' => time()],
-    ]);
+    return TRUE;
   }
 
   private function fileSystem(): FileSystemInterface {
