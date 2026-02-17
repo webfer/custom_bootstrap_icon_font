@@ -137,6 +137,7 @@ On this page you can:
 
 - Enter one Bootstrap icon name per line (example: `arrow-right-circle-fill`).
 - Names may include or omit the `bi-` prefix; it is normalized automatically.
+- You can also paste full HTML snippets and the module will extract the icon name automatically (example: `<i class="bi bi-basket-fill"></i>`).
 - Pick a `font_name` (the `font-family` name used in CSS).
 - Configure where Bootstrap Icons live (`icons_source_dir`).
 - Configure the generator command (`generator_command`).
