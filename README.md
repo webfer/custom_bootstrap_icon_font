@@ -3,6 +3,8 @@
 A Drupal module that generates a custom icon font (WOFF2 + optional WOFF) from a
 selected subset of Bootstrap Icons, and publishes matching CSS classes.
 
+🚀 **Why?** Keep your frontend lightweight: instead of shipping the entire Bootstrap Icons set, you can select only the icons your site actually uses (for example, 100 icons) and generate a small, focused font + CSS just for those.
+
 ---
 
 ## 📦 Module Overview
