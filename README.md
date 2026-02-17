@@ -14,7 +14,7 @@ selected subset of Bootstrap Icons, and publishes matching CSS classes.
 This module:
 
 - Provides an admin page to select icons and configure the build.
-- Builds the font via Drush (recommended for production/Composer installs; avoids running Node during HTTP requests).
+- Builds the font either via Drush (recommended) or via a UI button (handy for local/dev).
 - Writes generated assets to `public://custom_bootstrap_icon_font/font/`.
 - Automatically attaches the generated CSS on the frontend (only if it exists).
 - Provides Twig helpers to render icon markup.
@@ -35,8 +35,26 @@ This module:
 
 ## 🛠 Installation
 
-1. **Place the module**: Ensure the `custom_bootstrap_icon_font` folder exists in `web/modules/custom/`.
-2. **Enable**: Go to **Admin > Extend** and enable **Custom Bootstrap Icon Font**.
+### ✅ Install with Composer (recommended) 🧰
+
+From your Drupal project root:
+
+```bash
+composer require webfer/custom_bootstrap_icon_font
+```
+
+Composer will install the module into your Drupal codebase (commonly under `web/modules/contrib/` in standard Drupal Composer templates). 📦
+
+Then enable the module:
+
+- 📍 **Admin > Extend** → enable **Custom Bootstrap Icon Font**, or
+- 💻 `drush en custom_bootstrap_icon_font -y`
+
+### 🧩 Install without Composer (development only)
+
+If you’re developing locally, you can still place the module folder under:
+
+- `web/modules/custom/custom_bootstrap_icon_font`
 
 ---
 
@@ -68,6 +86,8 @@ You need:
 
 - `node`, `npm`, `npx`
 - Fantasticon available to the same environment that runs `drush`.
+
+Tip 💡: If you plan to build from the admin UI (“Save and build now”), the same Node tooling must also be available to the PHP/web user, and the request must be allowed to run long enough.
 
 Recommended (project-level, deterministic):
 
@@ -121,7 +141,16 @@ On this page you can:
 - Configure where Bootstrap Icons live (`icons_source_dir`).
 - Configure the generator command (`generator_command`).
 
-Then build assets via Drush:
+### ✅ Build assets (two options)
+
+#### Option A: Build from the UI (friendly) 🖱️
+
+1. Click **Save and build now**.
+2. The module generates the CSS + font files under `public://custom_bootstrap_icon_font/font/`.
+
+This is great for local/dev. On production, Drush is usually safer (no web timeouts and doesn’t require Node to run during a web request).
+
+#### Option B: Build via Drush (recommended) 🧑‍💻
 
 ```bash
 drush di-font:build
@@ -255,6 +284,11 @@ Example:
   - Ensure Node.js + npm + npx are installed.
   - Ensure Fantasticon is available on PATH (or set `generator_command` accordingly).
   - Run the build from the same environment where `drush` runs.
+  - If you use the UI build, confirm the web/PHP user can run the generator command and that the request won’t time out.
+
+- **I clicked “Save configuration” but nothing was generated**
+  - That button only saves settings.
+  - To generate the CSS + fonts, click **Save and build now** (or run `drush di-font:build`).
 
 - **CSS loads but icons show as empty squares**
   - Font files are missing or blocked. Check the network tab for `.woff2`.
@@ -269,13 +303,18 @@ Example:
 
 ```
 custom_bootstrap_icon_font/
+├── composer.json
+├── LICENSE
 ├── custom_bootstrap_icon_font.info.yml
 ├── custom_bootstrap_icon_font.module
 ├── custom_bootstrap_icon_font.routing.yml
 ├── custom_bootstrap_icon_font.permissions.yml
 ├── custom_bootstrap_icon_font.links.menu.yml
 ├── custom_bootstrap_icon_font.services.yml
+├── custom_bootstrap_icon_font.libraries.yml
 ├── drush.services.yml
+├── css/
+│   └── custom_bootstrap_icon_font.admin.css
 ├── config/
 │   ├── install/
 │   │   └── custom_bootstrap_icon_font.settings.yml
@@ -288,6 +327,8 @@ custom_bootstrap_icon_font/
     │   └── CustomBootstrapIconFontGenerateForm.php
     ├── Helper/
     │   └── CustomBootstrapIconFontHelper.php
+  ├── Service/
+  │   └── CustomBootstrapIconFontBuilder.php
     └── Twig/
         └── CustomBootstrapIconFontTwigExtension.php
 ```
