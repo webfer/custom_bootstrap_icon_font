@@ -124,7 +124,7 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
       '#default_value' => implode("\n", $bootstrap_icons),
       '#rows' => 10,
       '#required' => FALSE,
-      '#description' => $this->t('Examples: arrow-right-circle-fill, bi-arrow-right-circle-fill, bi bi-arrow-right-circle-fill, or <i class="bi bi-arrow-right-circle-fill"></i>.'),
+      '#description' => $this->t('Examples: arrow-right-circle-fill, bi-arrow-right-circle-fill, bi bi-arrow-right-circle-fill. You can also paste the HTML, for example: <code>&lt;i class="bi bi-twitter"&gt;&lt;/i&gt;</code>.'),
     ];
 
     $form['icons_fontawesome'] = [
@@ -133,7 +133,7 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
       '#default_value' => implode("\n", $fontawesome_icons),
       '#rows' => 10,
       '#required' => FALSE,
-      '#description' => $this->t('Examples: <i class="fa-solid fa-arrow-down"></i>, fa-arrow-down, or fa-solid-arrow-down. Upload the SVGs into libraries/fontawesome/icons first (use the upload section below).'),
+      '#description' => $this->t('Examples: fa-arrow-down or fa-solid-arrow-down. You can also paste the HTML, for example: <code>&lt;i class="fa-solid fa-arrow-down"&gt;&lt;/i&gt;</code>. Upload the SVGs into libraries/fontawesome/icons first (use the upload section below).'),
     ];
 
     // Tooling configuration (used by the Drush build command).
