@@ -10,23 +10,27 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\custom_bootstrap_icon_font\Helper\CustomBootstrapIconFontHelper;
 use Drupal\custom_bootstrap_icon_font\Service\CustomBootstrapIconFontBuilder;
 use Drupal\file\Entity\File;
-use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
 
-  private LoggerInterface $logger;
+  /**
+   * NOTE: FormBase uses DependencySerializationTrait. Service properties must
+   * not be private/readonly, otherwise they may not survive form caching across
+   * requests (e.g. managed_file upload rebuilds).
+   */
+  protected LoggerInterface $logger;
 
   public function __construct(
     ConfigFactoryInterface $config_factory,
     \Drupal\Core\Config\TypedConfigManagerInterface $typedConfigManager,
-    private readonly FileSystemInterface $fileSystem,
-    private readonly CustomBootstrapIconFontBuilder $builder,
-    LoggerChannelFactoryInterface $loggerFactory,
+    protected FileSystemInterface $fileSystem,
+    protected CustomBootstrapIconFontBuilder $builder,
+    LoggerInterface $logger,
   ) {
     parent::__construct($config_factory, $typedConfigManager);
-    $this->logger = $loggerFactory->get('custom_bootstrap_icon_font');
+    $this->logger = $logger;
   }
 
   public static function create(ContainerInterface $container): static {
@@ -35,7 +39,7 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
       $container->get('config.typed'),
       $container->get('file_system'),
       $container->get('custom_bootstrap_icon_font.builder'),
-      $container->get('logger.factory'),
+      $container->get('logger.channel.custom_bootstrap_icon_font'),
     );
   }
 
