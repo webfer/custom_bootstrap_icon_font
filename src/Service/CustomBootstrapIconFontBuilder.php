@@ -42,7 +42,13 @@ final class CustomBootstrapIconFontBuilder {
 
     $config = $this->configFactory->get('custom_bootstrap_icon_font.settings');
 
-    $icons = $config->get('icons') ?? [];
+    $bootstrap_icons = $config->get('bootstrap_icons') ?? [];
+    $fontawesome_icons = $config->get('fontawesome_icons') ?? [];
+    $icons = array_values(array_unique(array_filter(array_merge($bootstrap_icons, $fontawesome_icons))));
+    // Backwards compatibility: if split lists are empty, fall back to legacy.
+    if (empty($icons)) {
+      $icons = $config->get('icons') ?? [];
+    }
     if (empty($icons)) {
       $errors[] = 'No icons configured. Use the admin UI to select icons first.';
       return [
@@ -56,6 +62,7 @@ final class CustomBootstrapIconFontBuilder {
 
     $font_name = trim((string) ($config->get('font_name') ?: 'custom-bootstrap-icons'));
     $icons_source_dir_rel = (string) ($config->get('icons_source_dir') ?: 'libraries/bootstrap-icons/icons');
+    $fontawesome_source_dir_rel = (string) ($config->get('fontawesome_icons_source_dir') ?: 'libraries/fontawesome/icons');
     $generator_command = trim((string) ($config->get('generator_command') ?: 'npx fantasticon'));
 
     if (preg_match('/^npx\s+fantasticon(\s|$)/', $generator_command)) {
@@ -76,17 +83,50 @@ final class CustomBootstrapIconFontBuilder {
       }
     }
 
-    $source_dir = CustomBootstrapIconFontHelper::resolveIconsSourceDir($icons_source_dir_rel);
-    if (!$source_dir) {
-      $errors[] = 'Bootstrap Icons source dir not found: ' . $icons_source_dir_rel;
-      $errors[] = 'Expected absolute path: ' . rtrim(DRUPAL_ROOT, '/') . '/' . ltrim($icons_source_dir_rel, '/');
-      return [
-        'success' => FALSE,
-        'messages' => $messages,
-        'errors' => $errors,
-        'assets' => $assets,
-        'version' => 0,
-      ];
+    // Ensure split lists are populated (important for Drush builds).
+    $fontawesome_icons = [];
+    $bootstrap_icons = [];
+    foreach ($icons as $icon) {
+      $icon = (string) $icon;
+      if (CustomBootstrapIconFontHelper::parseFontAwesomeIconId($icon)) {
+        $fontawesome_icons[] = $icon;
+      }
+      else {
+        $bootstrap_icons[] = $icon;
+      }
+    }
+
+    $bootstrap_source_dir = NULL;
+    if (!empty($bootstrap_icons)) {
+      $bootstrap_source_dir = CustomBootstrapIconFontHelper::resolveIconsSourceDir($icons_source_dir_rel);
+      if (!$bootstrap_source_dir) {
+        $errors[] = 'Bootstrap Icons source dir not found: ' . $icons_source_dir_rel;
+        $errors[] = 'Expected absolute path: ' . rtrim(DRUPAL_ROOT, '/') . '/' . ltrim($icons_source_dir_rel, '/');
+        return [
+          'success' => FALSE,
+          'messages' => $messages,
+          'errors' => $errors,
+          'assets' => $assets,
+          'version' => 0,
+        ];
+      }
+    }
+
+    $fontawesome_source_dir = NULL;
+    if (!empty($fontawesome_icons)) {
+      $fontawesome_source_dir = CustomBootstrapIconFontHelper::resolveIconsSourceDir($fontawesome_source_dir_rel);
+      if (!$fontawesome_source_dir) {
+        $errors[] = 'Font Awesome icons source dir not found: ' . $fontawesome_source_dir_rel;
+        $errors[] = 'Expected absolute path: ' . rtrim(DRUPAL_ROOT, '/') . '/' . ltrim($fontawesome_source_dir_rel, '/');
+        $errors[] = 'Tip: use the “Upload SVG icons (optional)” section in the admin UI, or upload SVGs via SFTP/CI.';
+        return [
+          'success' => FALSE,
+          'messages' => $messages,
+          'errors' => $errors,
+          'assets' => $assets,
+          'version' => 0,
+        ];
+      }
     }
 
     $editable = $this->configFactory->getEditable('custom_bootstrap_icon_font.settings');
@@ -96,7 +136,7 @@ final class CustomBootstrapIconFontBuilder {
     $selected_codepoints = array_intersect_key($all_codepoints, array_fill_keys($icons, TRUE));
 
     $out_dir_uri = 'public://custom_bootstrap_icon_font/font';
-    CustomBootstrapIconFontHelper::prepareStreamDir($out_dir_uri, FileSystemInterface::CREATE_DIRECTORY);
+    $this->fileSystem->prepareDirectory($out_dir_uri, FileSystemInterface::CREATE_DIRECTORY);
     $out_dir = $this->fileSystem->realpath($out_dir_uri);
     if (!$out_dir) {
       $errors[] = 'Unable to resolve output directory: ' . $out_dir_uri;
@@ -110,7 +150,7 @@ final class CustomBootstrapIconFontBuilder {
     }
 
     $work_dir_uri = 'temporary://custom_bootstrap_icon_font';
-    CustomBootstrapIconFontHelper::prepareStreamDir($work_dir_uri, FileSystemInterface::CREATE_DIRECTORY);
+    $this->fileSystem->prepareDirectory($work_dir_uri, FileSystemInterface::CREATE_DIRECTORY);
     $work_dir = $this->fileSystem->realpath($work_dir_uri);
     if (!$work_dir) {
       $errors[] = 'Unable to resolve temporary directory: ' . $work_dir_uri;
@@ -131,7 +171,7 @@ final class CustomBootstrapIconFontBuilder {
     }
 
     try {
-      CustomBootstrapIconFontHelper::stageIcons($icons, $input_dir, $source_dir);
+      CustomBootstrapIconFontHelper::stageIconsFromSources($icons, $input_dir, $bootstrap_source_dir, $fontawesome_source_dir);
     }
     catch (\Throwable $e) {
       $errors[] = 'Icon staging failed: ' . $e->getMessage();
@@ -151,6 +191,12 @@ final class CustomBootstrapIconFontBuilder {
       'outputDir' => $out_dir,
       'fontTypes' => ['woff2', 'woff'],
       'assetTypes' => [],
+      // Normalize/scales glyphs so mixed icon sets render consistently.
+      // This is especially important for Bootstrap Icons (16x16 viewBox) vs
+      // Font Awesome SVGs (often 512x512 viewBox).
+      'normalize' => TRUE,
+      'fontHeight' => 512,
+      'descent' => 0,
       'codepoints' => $selected_codepoints,
     ];
     file_put_contents($config_path, json_encode($fantasticon_config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
@@ -237,9 +283,12 @@ final class CustomBootstrapIconFontBuilder {
 
     $editable
       ->set('icons', $icons)
+      ->set('bootstrap_icons', array_values(array_unique($bootstrap_icons)))
+      ->set('fontawesome_icons', array_values(array_unique($fontawesome_icons)))
       ->set('codepoints', $all_codepoints)
       ->set('font_name', $font_name)
       ->set('icons_source_dir', $icons_source_dir_rel)
+      ->set('fontawesome_icons_source_dir', $fontawesome_source_dir_rel)
       ->set('generator_command', $generator_command)
       ->set('version', (int) $version)
       ->save();

@@ -1,5 +1,6 @@
 services:
   custom_bootstrap_icon_font.commands:
     class: Drupal\custom_bootstrap_icon_font\Commands\CustomBootstrapIconFontCommands
+    arguments: ['@custom_bootstrap_icon_font.builder']
     tags:
       - { name: drush.command }

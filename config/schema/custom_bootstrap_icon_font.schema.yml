@@ -7,6 +7,16 @@ custom_bootstrap_icon_font.settings:
       label: 'Selected icons'
       sequence:
         type: string
+    bootstrap_icons:
+      type: sequence
+      label: 'Selected Bootstrap icons'
+      sequence:
+        type: string
+    fontawesome_icons:
+      type: sequence
+      label: 'Selected Font Awesome icons'
+      sequence:
+        type: string
     codepoints:
       type: mapping
       label: 'Icon codepoints'
@@ -16,6 +26,9 @@ custom_bootstrap_icon_font.settings:
     icons_source_dir:
       type: string
       label: 'Bootstrap Icons source directory (relative to DRUPAL_ROOT)'
+    fontawesome_icons_source_dir:
+      type: string
+      label: 'Font Awesome SVG source directory (relative to DRUPAL_ROOT)'
     generator_command:
       type: string
       label: 'Font generator command (fantasticon)'
