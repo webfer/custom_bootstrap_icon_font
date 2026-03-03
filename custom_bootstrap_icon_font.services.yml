@@ -1,4 +1,8 @@
 services:
+  logger.channel.custom_bootstrap_icon_font:
+    parent: logger.channel_base
+    arguments: ['custom_bootstrap_icon_font']
+
   custom_bootstrap_icon_font.twig_extension:
     class: Drupal\custom_bootstrap_icon_font\Twig\CustomBootstrapIconFontTwigExtension
     tags:
