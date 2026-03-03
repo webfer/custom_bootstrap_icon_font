@@ -2,9 +2,16 @@
 
 namespace Drupal\custom_bootstrap_icon_font\Commands;
 
+use Drupal\custom_bootstrap_icon_font\Service\CustomBootstrapIconFontBuilder;
 use Drush\Commands\DrushCommands;
 
 final class CustomBootstrapIconFontCommands extends DrushCommands {
+
+  public function __construct(
+    private readonly CustomBootstrapIconFontBuilder $builder,
+  ) {
+    parent::__construct();
+  }
 
   /**
    * Builds the icon font + CSS from the configured icon list.
@@ -14,7 +21,7 @@ final class CustomBootstrapIconFontCommands extends DrushCommands {
   * @usage drush di-font:build
    */
   public function build(): int {
-    $result = \Drupal::service('custom_bootstrap_icon_font.builder')->build();
+    $result = $this->builder->build();
 
     foreach ($result['errors'] ?? [] as $message) {
       $this->logger()->error((string) $message);

@@ -9,6 +9,41 @@ final class CustomBootstrapIconFontHelper {
 
   public const DEFAULT_CODEPOINT_START = 0xE001;
 
+  private const FONT_AWESOME_STYLES = ['solid', 'regular', 'brands'];
+
+  // Common Font Awesome utility/modifier classes that are NOT icon names.
+  // Keep this list short and conservative; anything unknown is treated as an icon.
+  private const FONT_AWESOME_NON_ICON_TOKENS = [
+    'fw',
+    'lg',
+    'xs',
+    'sm',
+    'xl',
+    '2xl',
+    '3x',
+    '4x',
+    '5x',
+    '6x',
+    '7x',
+    '8x',
+    '9x',
+    '10x',
+    'spin',
+    'pulse',
+    'spin-pulse',
+    'spin-reverse',
+    'bounce',
+    'beat',
+    'beat-fade',
+    'fade',
+    'flip',
+    'flip-horizontal',
+    'flip-vertical',
+    'rotate-90',
+    'rotate-180',
+    'rotate-270',
+  ];
+
   /**
    * Resolves a Bootstrap Icons SVG source directory to an absolute path.
    *
@@ -39,6 +74,45 @@ final class CustomBootstrapIconFontHelper {
   }
 
   /**
+   * Normalizes a Font Awesome icon ID to a namespaced Fantasticon-safe value.
+   *
+   * Output examples:
+   * - fa-solid-arrow-down
+   * - fa-regular-circle
+   * - fa-brands-github
+   */
+  public static function normalizeFontAwesomeIconId(string $style, string $icon_name): string {
+    $style = strtolower(trim($style));
+    $icon_name = strtolower(trim($icon_name));
+
+    if (!in_array($style, self::FONT_AWESOME_STYLES, TRUE)) {
+      $style = 'solid';
+    }
+
+    // Allow users to paste fa-arrow-down or fa-solid-arrow-down too.
+    $icon_name = preg_replace('/^fa-/', '', $icon_name) ?? $icon_name;
+    $icon_name = preg_replace('/^(solid|regular|brands)-/', '', $icon_name) ?? $icon_name;
+
+    $icon_name = preg_replace('/[^a-z0-9-]/', '', $icon_name) ?? $icon_name;
+    $icon_name = trim($icon_name, '-');
+
+    return 'fa-' . $style . '-' . $icon_name;
+  }
+
+  /**
+   * Parses a normalized Font Awesome icon ID.
+   *
+   * @return array{style:string,name:string}|null
+   */
+  public static function parseFontAwesomeIconId(string $icon_id): ?array {
+    $icon_id = strtolower(trim($icon_id));
+    if (preg_match('/^fa\-(solid|regular|brands)\-([a-z0-9-]+)$/', $icon_id, $m)) {
+      return ['style' => $m[1], 'name' => $m[2]];
+    }
+    return NULL;
+  }
+
+  /**
    * Extracts one or more Bootstrap Icon names from a free-form line.
    *
    * Supports inputs like:
@@ -54,6 +128,51 @@ final class CustomBootstrapIconFontHelper {
     $line = trim($line);
     if ($line === '') {
       return [];
+    }
+
+    // Font Awesome: accept pasted HTML like:
+    // <i class="fa-solid fa-arrow-down"></i>
+    // or class lists like: fa-solid fa-arrow-down
+    // We convert them to a namespaced ID: fa-solid-arrow-down.
+    if (stripos($line, 'fa-') !== FALSE) {
+      $fa_matches = [];
+      if (preg_match_all('/\bfa-([a-z0-9-]+)\b/i', $line, $fa_matches) && !empty($fa_matches[1])) {
+        $tokens = array_values(array_unique(array_map('strtolower', $fa_matches[1])));
+        $style = 'solid';
+        foreach ($tokens as $token) {
+          if (in_array($token, self::FONT_AWESOME_STYLES, TRUE)) {
+            $style = $token;
+            break;
+          }
+        }
+
+        $icon_name = NULL;
+        foreach ($tokens as $token) {
+          if (in_array($token, self::FONT_AWESOME_STYLES, TRUE)) {
+            continue;
+          }
+          if (in_array($token, self::FONT_AWESOME_NON_ICON_TOKENS, TRUE)) {
+            continue;
+          }
+          // First unknown token is assumed to be the icon name (e.g. arrow-down).
+          $icon_name = $token;
+          break;
+        }
+
+        if (is_string($icon_name) && $icon_name !== '') {
+          return [self::normalizeFontAwesomeIconId($style, $icon_name)];
+        }
+      }
+
+      // Allow manual entry like: fa-arrow-down
+      if (preg_match('/^fa\-([a-z0-9-]+)$/i', $line, $m)) {
+        return [self::normalizeFontAwesomeIconId('solid', $m[1])];
+      }
+
+      // Allow manual entry like: fa-solid-arrow-down
+      if (preg_match('/^fa\-(solid|regular|brands)\-([a-z0-9-]+)$/i', $line, $m)) {
+        return [self::normalizeFontAwesomeIconId($m[1], $m[2])];
+      }
     }
 
     $matches = [];
@@ -72,6 +191,115 @@ final class CustomBootstrapIconFontHelper {
     // Fallback: treat the whole line as a single icon identifier.
     $icon = self::normalizeIconName($line);
     return $icon !== '' ? [$icon] : [];
+  }
+
+  /**
+   * Copies selected SVG files into an input directory for font generation.
+   *
+   * Supports Bootstrap Icons (no prefix) and Font Awesome IDs like:
+   * - fa-solid-arrow-down
+   */
+  public static function stageIconsFromSources(
+    array $icons,
+    string $input_dir_realpath,
+    ?string $bootstrap_source_dir,
+    ?string $fontawesome_source_dir
+  ): void {
+    if (!is_dir($input_dir_realpath)) {
+      mkdir($input_dir_realpath, 0775, TRUE);
+    }
+
+    foreach ($icons as $icon) {
+      $icon = (string) $icon;
+      $fa = self::parseFontAwesomeIconId($icon);
+      if ($fa) {
+        if (!$fontawesome_source_dir) {
+          throw new \RuntimeException('Font Awesome source dir is not configured.');
+        }
+        $src = self::resolveFontAwesomeSvgPath($fontawesome_source_dir, $fa['style'], $fa['name']);
+        $dest = $input_dir_realpath . '/' . $icon . '.svg';
+        if (!$src) {
+          throw new \RuntimeException('Font Awesome icon not found: ' . $icon . '. Checked: ' . $fontawesome_source_dir);
+        }
+        copy($src, $dest);
+        continue;
+      }
+
+      if (!$bootstrap_source_dir) {
+        throw new \RuntimeException('Bootstrap Icons source dir is not configured.');
+      }
+
+      $src = rtrim($bootstrap_source_dir, '/') . '/' . $icon . '.svg';
+      $dest = $input_dir_realpath . '/' . $icon . '.svg';
+
+      if (!is_file($src)) {
+        throw new \RuntimeException('Icon not found: ' . $icon . '. Checked: ' . $bootstrap_source_dir);
+      }
+      copy($src, $dest);
+    }
+  }
+
+  /**
+   * Resolves the real path to a Font Awesome SVG file.
+   *
+   * Supports several common directory layouts:
+   * - <dir>/arrow-down.svg
+   * - <dir>/solid/arrow-down.svg
+   * - <dir>/svgs/solid/arrow-down.svg
+   */
+  private static function resolveFontAwesomeSvgPath(string $dir, string $style, string $name): ?string {
+    $dir = rtrim($dir, '/');
+    $style = strtolower($style);
+    $name = strtolower($name);
+
+    $candidates = [
+      $dir . '/' . $name . '.svg',
+      $dir . '/fa-' . $name . '.svg',
+      $dir . '/' . $style . '/' . $name . '.svg',
+      $dir . '/svgs/' . $style . '/' . $name . '.svg',
+      $dir . '/' . $style . '-' . $name . '.svg',
+    ];
+
+    foreach ($candidates as $path) {
+      if (is_file($path)) {
+        return $path;
+      }
+    }
+
+    // Fallback: some downloads (or user uploads) include extra tokens like
+    // "-solid-full" in the filename. Try to find a best-effort match.
+    $patterns = [
+      $dir . '/*' . $name . '*.svg',
+      $dir . '/*' . $style . '*' . $name . '*.svg',
+      $dir . '/*' . $name . '*' . $style . '*.svg',
+      $dir . '/' . $style . '/*' . $name . '*.svg',
+      $dir . '/svgs/' . $style . '/*' . $name . '*.svg',
+    ];
+
+    $matches = [];
+    foreach ($patterns as $pattern) {
+      foreach (glob($pattern) ?: [] as $match) {
+        if (is_file($match)) {
+          $matches[$match] = TRUE;
+        }
+      }
+    }
+
+    if (!empty($matches)) {
+      $paths = array_keys($matches);
+      // Prefer paths containing the style token, then shortest basename.
+      usort($paths, static function (string $a, string $b) use ($style): int {
+        $a_has = stripos(basename($a), $style) !== FALSE;
+        $b_has = stripos(basename($b), $style) !== FALSE;
+        if ($a_has !== $b_has) {
+          return $a_has ? -1 : 1;
+        }
+        return strlen(basename($a)) <=> strlen(basename($b));
+      });
+      return $paths[0];
+    }
+
+    return NULL;
   }
 
   /**
