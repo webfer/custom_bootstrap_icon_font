@@ -174,6 +174,8 @@ On this page you can:
 - Configure where Bootstrap Icons live (`icons_source_dir`).
 - Configure where Font Awesome SVGs live (`fontawesome_icons_source_dir`).
 - Configure the generator command (`generator_command`).
+- Use the **Icons preview** section to browse your selected icons.
+  - The preview is paginated (configure **Icons per page** on the form).
 
 ### Optional: Upload SVG icons from the UI
 

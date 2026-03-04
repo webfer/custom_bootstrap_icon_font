@@ -6,4 +6,5 @@ font_name: 'custom-bootstrap-icons'
 icons_source_dir: 'libraries/bootstrap-icons/icons'
 fontawesome_icons_source_dir: 'libraries/fontawesome/icons'
 generator_command: 'npx fantasticon'
+preview_items_per_page: 50
 version: 0
