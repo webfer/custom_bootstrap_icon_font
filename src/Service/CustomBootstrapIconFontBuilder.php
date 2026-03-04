@@ -11,8 +11,14 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\Process\Exception\RuntimeException as ProcessRuntimeException;
 use Symfony\Component\Process\Process;
 
+/**
+ * Builds the icon font assets (fonts + CSS) from selected SVG icons.
+ */
 final class CustomBootstrapIconFontBuilder {
 
+  /**
+   * Logger channel.
+   */
   private LoggerInterface $logger;
 
   public function __construct(
