@@ -6,8 +6,14 @@ use Drupal\Component\Utility\Html;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
+/**
+ * Twig helpers for rendering icons from the generated icon font.
+ */
 final class CustomBootstrapIconFontTwigExtension extends AbstractExtension {
 
+  /**
+   * {@inheritdoc}
+   */
   public function getFunctions(): array {
     return [
       new TwigFunction('di_font_icon', [$this, 'render'], ['is_safe' => ['html']]),
@@ -17,6 +23,18 @@ final class CustomBootstrapIconFontTwigExtension extends AbstractExtension {
     ];
   }
 
+  /**
+   * Renders an icon span using the generated CSS classes.
+   *
+   * @param string $name
+   *   Icon name, for example "arrow-right-circle-fill" or "fa-solid-arrow-down".
+   *   The "bi-" prefix is accepted and stripped.
+   * @param array $options
+   *   Optional options.
+   *
+   * @return string
+   *   Rendered HTML.
+   */
   public function render(string $name, array $options = []): string {
     $name = preg_replace('/^bi-/', '', trim($name)) ?? $name;
     if ($name === '') {

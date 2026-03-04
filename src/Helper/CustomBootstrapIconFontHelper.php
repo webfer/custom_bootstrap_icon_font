@@ -5,6 +5,9 @@ namespace Drupal\custom_bootstrap_icon_font\Helper;
 use Drupal\Component\Utility\Html;
 use Drupal\Core\File\FileSystemInterface;
 
+/**
+ * Helper utilities for parsing icon identifiers and generating assets.
+ */
 final class CustomBootstrapIconFontHelper {
 
   public const DEFAULT_CODEPOINT_START = 0xE001;
@@ -12,7 +15,8 @@ final class CustomBootstrapIconFontHelper {
   private const FONT_AWESOME_STYLES = ['solid', 'regular', 'brands'];
 
   // Common Font Awesome utility/modifier classes that are NOT icon names.
-  // Keep this list short and conservative; anything unknown is treated as an icon.
+  // Keep this list short and conservative; anything unknown is treated
+  // as an icon.
   private const FONT_AWESOME_NON_ICON_TOKENS = [
     'fw',
     'lg',
@@ -47,8 +51,8 @@ final class CustomBootstrapIconFontHelper {
   /**
    * Resolves a Bootstrap Icons SVG source directory to an absolute path.
    *
-   * Expected to be a path relative to DRUPAL_ROOT, typically:
-   * - libraries/bootstrap-icons/icons
+   * Expected to be a path relative to DRUPAL_ROOT, typically.
+   * - libraries/bootstrap-icons/icons.
    */
   public static function resolveIconsSourceDir(string $relative_path): ?string {
     $relative_path = trim($relative_path);
@@ -76,10 +80,10 @@ final class CustomBootstrapIconFontHelper {
   /**
    * Normalizes a Font Awesome icon ID to a namespaced Fantasticon-safe value.
    *
-   * Output examples:
-   * - fa-solid-arrow-down
-   * - fa-regular-circle
-   * - fa-brands-github
+   * Output examples.
+   * - fa-solid-arrow-down.
+   * - fa-regular-circle.
+   * - fa-brands-github.
    */
   public static function normalizeFontAwesomeIconId(string $style, string $icon_name): string {
     $style = strtolower(trim($style));
@@ -102,7 +106,11 @@ final class CustomBootstrapIconFontHelper {
   /**
    * Parses a normalized Font Awesome icon ID.
    *
+   * @param string $icon_id
+   *   Icon ID like "fa-solid-arrow-down".
+   *
    * @return array{style:string,name:string}|null
+   *   Parsed parts, or NULL if the input is not a Font Awesome icon ID.
    */
   public static function parseFontAwesomeIconId(string $icon_id): ?array {
     $icon_id = strtolower(trim($icon_id));
@@ -136,7 +144,10 @@ final class CustomBootstrapIconFontHelper {
     // We convert them to a namespaced ID: fa-solid-arrow-down.
     if (stripos($line, 'fa-') !== FALSE) {
       $fa_matches = [];
-      if (preg_match_all('/\bfa-([a-z0-9-]+)\b/i', $line, $fa_matches) && !empty($fa_matches[1])) {
+      if (
+        preg_match_all('/\bfa-([a-z0-9-]+)\b/i', $line, $fa_matches)
+        && !empty($fa_matches[1])
+      ) {
         $tokens = array_values(array_unique(array_map('strtolower', $fa_matches[1])));
         $style = 'solid';
         foreach ($tokens as $token) {
@@ -164,23 +175,30 @@ final class CustomBootstrapIconFontHelper {
         }
       }
 
-      // Allow manual entry like: fa-arrow-down
-      if (preg_match('/^fa\-([a-z0-9-]+)$/i', $line, $m)) {
+      // Allow manual entry like: fa-arrow-down.
+      if (
+        preg_match('/^fa\-([a-z0-9-]+)$/i', $line, $m)
+      ) {
         return [self::normalizeFontAwesomeIconId('solid', $m[1])];
       }
 
-      // Allow manual entry like: fa-solid-arrow-down
-      if (preg_match('/^fa\-(solid|regular|brands)\-([a-z0-9-]+)$/i', $line, $m)) {
+      // Allow manual entry like: fa-solid-arrow-down.
+      if (
+        preg_match('/^fa\-(solid|regular|brands)\-([a-z0-9-]+)$/i', $line, $m)
+      ) {
         return [self::normalizeFontAwesomeIconId($m[1], $m[2])];
       }
     }
 
     $matches = [];
     // Capture any bi-* classname occurrences (works for HTML, class lists, etc).
-    if (preg_match_all('/\bbi-([a-z0-9-]+)\b/i', $line, $matches) && !empty($matches[1])) {
+    if (
+      preg_match_all('/\bbi-([a-z0-9-]+)\b/i', $line, $matches)
+      && !empty($matches[1])
+    ) {
       $icons = array_map(
-        static fn (string $m): string => self::normalizeIconName('bi-' . $m),
-        $matches[1]
+        static fn (string $match): string => self::normalizeIconName('bi-' . $match),
+        $matches[1],
       );
       $icons = array_values(array_unique(array_filter($icons)));
       if (!empty($icons)) {
@@ -196,14 +214,14 @@ final class CustomBootstrapIconFontHelper {
   /**
    * Copies selected SVG files into an input directory for font generation.
    *
-   * Supports Bootstrap Icons (no prefix) and Font Awesome IDs like:
-   * - fa-solid-arrow-down
+   * Supports Bootstrap Icons (no prefix) and Font Awesome IDs like.
+   * - fa-solid-arrow-down.
    */
   public static function stageIconsFromSources(
     array $icons,
     string $input_dir_realpath,
     ?string $bootstrap_source_dir,
-    ?string $fontawesome_source_dir
+    ?string $fontawesome_source_dir,
   ): void {
     if (!is_dir($input_dir_realpath)) {
       mkdir($input_dir_realpath, 0775, TRUE);
@@ -216,10 +234,17 @@ final class CustomBootstrapIconFontHelper {
         if (!$fontawesome_source_dir) {
           throw new \RuntimeException('Font Awesome source dir is not configured.');
         }
-        $src = self::resolveFontAwesomeSvgPath($fontawesome_source_dir, $fa['style'], $fa['name']);
+        $src = self::resolveFontAwesomeSvgPath(
+          $fontawesome_source_dir,
+          $fa['style'],
+          $fa['name'],
+        );
         $dest = $input_dir_realpath . '/' . $icon . '.svg';
         if (!$src) {
-          throw new \RuntimeException('Font Awesome icon not found: ' . $icon . '. Checked: ' . $fontawesome_source_dir);
+          throw new \RuntimeException(
+            'Font Awesome icon not found: ' . $icon
+            . '. Checked: ' . $fontawesome_source_dir
+          );
         }
         copy($src, $dest);
         continue;
@@ -233,7 +258,9 @@ final class CustomBootstrapIconFontHelper {
       $dest = $input_dir_realpath . '/' . $icon . '.svg';
 
       if (!is_file($src)) {
-        throw new \RuntimeException('Icon not found: ' . $icon . '. Checked: ' . $bootstrap_source_dir);
+        throw new \RuntimeException(
+          'Icon not found: ' . $icon . '. Checked: ' . $bootstrap_source_dir
+        );
       }
       copy($src, $dest);
     }
@@ -242,10 +269,10 @@ final class CustomBootstrapIconFontHelper {
   /**
    * Resolves the real path to a Font Awesome SVG file.
    *
-   * Supports several common directory layouts:
-   * - <dir>/arrow-down.svg
-   * - <dir>/solid/arrow-down.svg
-   * - <dir>/svgs/solid/arrow-down.svg
+   * Supports several common directory layouts.
+   * - <dir>/arrow-down.svg.
+   * - <dir>/solid/arrow-down.svg.
+   * - <dir>/svgs/solid/arrow-down.svg.
    */
   private static function resolveFontAwesomeSvgPath(string $dir, string $style, string $name): ?string {
     $dir = rtrim($dir, '/');
@@ -306,13 +333,21 @@ final class CustomBootstrapIconFontHelper {
    * Assigns stable codepoints for a set of icons.
    *
    * @param string[] $icons
+   *   Icon IDs.
    * @param array $existing
+   *   Existing mapping of icon IDs to codepoints.
    *
    * @return array
    *   Mapping [iconName => intCodepoint].
    */
   public static function assignCodepoints(array $icons, array $existing = []): array {
-    $icons = array_values(array_unique(array_filter(array_map('strval', $icons))));
+    $icons = array_values(
+      array_unique(
+        array_filter(
+          array_map('strval', $icons)
+        )
+      )
+    );
 
     $codepoints = [];
     $used = [];
@@ -345,13 +380,24 @@ final class CustomBootstrapIconFontHelper {
 
   /**
    * Writes a CSS file that exposes icon classes as ::before glyphs.
+   *
+   * @param string $css_realpath
+   *   Absolute path to the CSS file to write.
+   * @param string $font_family
+   *   CSS font-family value.
+   * @param string $woff2_src
+   *   URL/path to the woff2 font file as used from within the CSS.
+   * @param string|null $woff_src
+   *   Optional URL/path to the woff font file as used from within the CSS.
+   * @param array $codepoints
+   *   Mapping of icon IDs to integer codepoints.
    */
   public static function writeCss(
     string $css_realpath,
     string $font_family,
     string $woff2_src,
     ?string $woff_src,
-    array $codepoints
+    array $codepoints,
   ): void {
     $font_family_safe = str_replace('"', "'", $font_family);
     $css = [];
@@ -360,7 +406,8 @@ final class CustomBootstrapIconFontHelper {
     $css[] = '  font-display: block;';
     $css[] = '  font-family: "' . $font_family_safe . '";';
     if ($woff_src) {
-      $css[] = '  src: url("' . $woff2_src . '") format("woff2"), url("' . $woff_src . '") format("woff");';
+      $css[] = '  src: url("' . $woff2_src . '") format("woff2"),'
+        . ' url("' . $woff_src . '") format("woff");';
     }
     else {
       $css[] = '  src: url("' . $woff2_src . '") format("woff2");';

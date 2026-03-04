@@ -4,6 +4,7 @@ namespace Drupal\custom_bootstrap_icon_font\Form;
 
 use Drupal\Component\Utility\Html;
 use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Config\TypedConfigManagerInterface;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
@@ -13,18 +14,26 @@ use Drupal\file\Entity\File;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
+/**
+ * Builds and previews a custom icon font from selected SVG icons.
+ */
 final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
 
   /**
-   * NOTE: FormBase uses DependencySerializationTrait. Service properties must
+   * Logger channel.
+   *
+   * Note: FormBase uses DependencySerializationTrait. Service properties must
    * not be private/readonly, otherwise they may not survive form caching across
-   * requests (e.g. managed_file upload rebuilds).
+   * requests (for example, managed_file upload rebuilds).
    */
   protected LoggerInterface $logger;
 
+  /**
+   * Creates the form.
+   */
   public function __construct(
     ConfigFactoryInterface $config_factory,
-    \Drupal\Core\Config\TypedConfigManagerInterface $typedConfigManager,
+    TypedConfigManagerInterface $typedConfigManager,
     protected FileSystemInterface $fileSystem,
     protected CustomBootstrapIconFontBuilder $builder,
     LoggerInterface $logger,
@@ -33,6 +42,9 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
     $this->logger = $logger;
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public static function create(ContainerInterface $container): static {
     return new static(
       $container->get('config.factory'),
@@ -43,14 +55,23 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
     );
   }
 
+  /**
+   * {@inheritdoc}
+   */
   protected function getEditableConfigNames(): array {
     return ['custom_bootstrap_icon_font.settings'];
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function getFormId(): string {
     return 'custom_bootstrap_icon_font_generate_form';
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function buildForm(array $form, FormStateInterface $form_state): array {
     $config = $this->config('custom_bootstrap_icon_font.settings');
     $request = $this->getRequest();
@@ -210,12 +231,12 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
 
     $form['uploads']['howto'] = [
       '#markup' => '<p><strong>Font Awesome Free workflow:</strong></p>'
-        . '<ol>'
-        . '<li>Find an icon in the Free collection: <a href="https://fontawesome.com/search?ic=free" target="_blank" rel="noopener noreferrer">fontawesome.com/search?ic=free</a></li>'
-        . '<li>Download the SVG for that icon.</li>'
-        . '<li>Upload the SVG here and choose the <strong>Font Awesome</strong> destination.</li>'
-        . '</ol>'
-        . '<p><strong>Tip:</strong> If you specifically want the file to end up under <code>/libraries/</code> (like Bootstrap Icons), pick the destination below. If your host disallows writing to the webroot, upload via SFTP/CI instead.</p>',
+      . '<ol>'
+      . '<li>Find an icon in the Free collection: <a href="https://fontawesome.com/search?ic=free" target="_blank" rel="noopener noreferrer">fontawesome.com/search?ic=free</a></li>'
+      . '<li>Download the SVG for that icon.</li>'
+      . '<li>Upload the SVG here and choose the <strong>Font Awesome</strong> destination.</li>'
+      . '</ol>'
+      . '<p><strong>Tip:</strong> If you specifically want the file to end up under <code>/libraries/</code> (like Bootstrap Icons), pick the destination below. If your host disallows writing to the webroot, upload via SFTP/CI instead.</p>',
     ];
 
     $form['uploads']['destination'] = [
@@ -385,7 +406,7 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
     // managed_file can come back in multiple shapes depending on configuration:
     // - [12, 13]
     // - ['fids' => [12, 13]]
-    // - '12 13'
+    // - '12 13'.
     $svgs_value = $form_state->getValue(['uploads', 'svgs']);
     if (is_array($svgs_value) && isset($svgs_value['fids'])) {
       $file_ids = $svgs_value['fids'];
@@ -462,7 +483,10 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
         $copied++;
       }
       else {
-        $this->messenger()->addError($this->t('Failed to copy @file to @dir', ['@file' => $basename, '@dir' => $target_abs]));
+        $this->messenger()->addError($this->t('Failed to copy @file to @dir', [
+          '@file' => $basename,
+          '@dir' => $target_abs,
+        ]));
       }
 
       // Clean up temp file entity.
@@ -475,24 +499,35 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
     }
 
     if ($copied > 0) {
-      $this->messenger()->addStatus($this->t('Copied @count SVG file(s) to @dir', ['@count' => $copied, '@dir' => $target_abs]));
+      $this->messenger()->addStatus($this->t('Copied @count SVG file(s) to @dir', [
+        '@count' => $copied,
+        '@dir' => $target_abs,
+      ]));
     }
 
     $form_state->setRebuild(TRUE);
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     if (!$this->saveConfiguration($form_state)) {
       return;
     }
 
-    $this->messenger()->addStatus($this->t('Configuration saved. Next: click “Save and build now” to generate assets (or run: @cmd).', ['@cmd' => 'drush di-font:build']));
+    $this->messenger()->addStatus($this->t('Configuration saved. Next: click “Save and build now” to generate assets (or run: @cmd).', [
+      '@cmd' => 'drush di-font:build',
+    ]));
 
     $form_state->setRedirect('custom_bootstrap_icon_font.generate', [], [
       'query' => ['di_saved' => time()],
     ]);
   }
 
+  /**
+   * Submits the build action (saves configuration and runs the generator).
+   */
   public function submitBuild(array &$form, FormStateInterface $form_state): void {
     if (!$this->saveConfiguration($form_state)) {
       return;
@@ -503,10 +538,10 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
     $result = $this->builder->build();
 
     foreach ($result['errors'] ?? [] as $message) {
-      $this->messenger()->addError($this->t((string) $message));
+      $this->messenger()->addError((string) $message);
     }
     foreach ($result['messages'] ?? [] as $message) {
-      $this->messenger()->addStatus($this->t((string) $message));
+      $this->messenger()->addStatus((string) $message);
     }
 
     if (!empty($result['success'])) {
@@ -516,6 +551,9 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
     }
   }
 
+  /**
+   * Persists configuration from the form state.
+   */
   private function saveConfiguration(FormStateInterface $form_state): bool {
     $bootstrap_lines = preg_split('/\r\n|\r|\n/', (string) $form_state->getValue('icons_bootstrap'));
     $fontawesome_lines = preg_split('/\r\n|\r|\n/', (string) $form_state->getValue('icons_fontawesome'));
