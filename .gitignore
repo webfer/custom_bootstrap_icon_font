@@ -150,4 +150,3 @@ node_modules
 .sass-cache
 
 # Ignore webpack generated files
-# web/themes/custom/drupy/assets
