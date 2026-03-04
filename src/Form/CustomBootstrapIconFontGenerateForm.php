@@ -8,6 +8,8 @@ use Drupal\Core\Config\TypedConfigManagerInterface;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Pager\PagerManagerInterface;
+use Drupal\Core\Pager\PagerParametersInterface;
 use Drupal\custom_bootstrap_icon_font\Helper\CustomBootstrapIconFontHelper;
 use Drupal\custom_bootstrap_icon_font\Service\CustomBootstrapIconFontBuilder;
 use Drupal\file\Entity\File;
@@ -36,6 +38,8 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
     TypedConfigManagerInterface $typedConfigManager,
     protected FileSystemInterface $fileSystem,
     protected CustomBootstrapIconFontBuilder $builder,
+    protected PagerManagerInterface $pagerManager,
+    protected PagerParametersInterface $pagerParameters,
     LoggerInterface $logger,
   ) {
     parent::__construct($config_factory, $typedConfigManager);
@@ -51,6 +55,8 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
       $container->get('config.typed'),
       $container->get('file_system'),
       $container->get('custom_bootstrap_icon_font.builder'),
+      $container->get('pager.manager'),
+      $container->get('pager.parameters'),
       $container->get('logger.channel.custom_bootstrap_icon_font'),
     );
   }
@@ -300,6 +306,7 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
       '#type' => 'details',
       '#title' => $this->t('Icons preview'),
       '#open' => TRUE,
+      '#tree' => TRUE,
     ];
 
     $form['preview']['help'] = [
@@ -308,9 +315,35 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
         : '<p>' . $this->t('Generate the font once to enable visual previews. Codepoints are still shown below.') . '</p>',
     ];
 
+    $default_items_per_page = (int) ($config->get('preview_items_per_page') ?? 50);
+    if ($default_items_per_page < 10) {
+      $default_items_per_page = 50;
+    }
+    if ($default_items_per_page > 500) {
+      $default_items_per_page = 500;
+    }
+
+    $form['preview']['items_per_page'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Icons per page'),
+      '#default_value' => $default_items_per_page,
+      '#min' => 10,
+      '#max' => 500,
+      '#step' => 1,
+      '#required' => TRUE,
+      '#description' => $this->t('Controls pagination of the preview table.'),
+    ];
+
     if (!empty($icons)) {
+      $total = count($icons);
+      $items_per_page = $default_items_per_page;
+      $this->pagerManager->createPager($total, $items_per_page);
+      $current_page = $this->pagerParameters->findPage();
+      $offset = $current_page * $items_per_page;
+      $paged_icons = array_slice($icons, $offset, $items_per_page);
+
       $rows = [];
-      foreach ($icons as $icon) {
+      foreach ($paged_icons as $icon) {
         $icon = trim((string) $icon);
         if ($icon === '') {
           continue;
@@ -359,6 +392,21 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
         '#rows' => $rows,
         '#empty' => $this->t('No icons selected.'),
       ];
+
+      if ($total > $items_per_page) {
+        $start = $total ? ($offset + 1) : 0;
+        $end = min($offset + $items_per_page, $total);
+        $form['preview']['range'] = [
+          '#markup' => '<p class="description">' . $this->t('Showing @start–@end of @total icons.', [
+            '@start' => $start,
+            '@end' => $end,
+            '@total' => $total,
+          ]) . '</p>',
+        ];
+        $form['preview']['pager'] = [
+          '#type' => 'pager',
+        ];
+      }
     }
 
     $form['actions'] = ['#type' => 'actions'];
@@ -552,6 +600,79 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
   }
 
   /**
+   * {@inheritdoc}
+   */
+  public function validateForm(array &$form, FormStateInterface $form_state): void {
+    parent::validateForm($form, $form_state);
+
+    // Some submit buttons (like the SVG upload/copy action) intentionally limit
+    // validation to a subset of elements. Don't block those flows with full
+    // form validation.
+    $limit_validation_errors = $form_state->getLimitValidationErrors();
+    if (is_array($limit_validation_errors) && $limit_validation_errors !== []) {
+      return;
+    }
+
+    $bootstrap_lines = preg_split('/\r\n|\r|\n/', (string) $form_state->getValue('icons_bootstrap'));
+    $fontawesome_lines = preg_split('/\r\n|\r|\n/', (string) $form_state->getValue('icons_fontawesome'));
+
+    $bootstrap_icons = [];
+    foreach ($bootstrap_lines as $line) {
+      foreach (CustomBootstrapIconFontHelper::extractIconNamesFromLine((string) $line) as $icon) {
+        if (!CustomBootstrapIconFontHelper::parseFontAwesomeIconId((string) $icon)) {
+          $bootstrap_icons[] = $icon;
+        }
+      }
+    }
+    $bootstrap_icons = array_values(array_unique(array_filter($bootstrap_icons)));
+
+    $fontawesome_icons = [];
+    foreach ($fontawesome_lines as $line) {
+      foreach (CustomBootstrapIconFontHelper::extractIconNamesFromLine((string) $line) as $icon) {
+        if (CustomBootstrapIconFontHelper::parseFontAwesomeIconId((string) $icon)) {
+          $fontawesome_icons[] = $icon;
+        }
+      }
+    }
+    $fontawesome_icons = array_values(array_unique(array_filter($fontawesome_icons)));
+
+    $icons = array_values(array_unique(array_filter(array_merge($bootstrap_icons, $fontawesome_icons))));
+    if (empty($icons)) {
+      $form_state->setErrorByName('icons_bootstrap', $this->t('Provide at least one Bootstrap icon or one Font Awesome icon.'));
+      $form_state->setErrorByName('icons_fontawesome', $this->t('Provide at least one Bootstrap icon or one Font Awesome icon.'));
+      return;
+    }
+
+    $has_bootstrap = !empty($bootstrap_icons);
+    $has_fontawesome = !empty($fontawesome_icons);
+
+    $font_name = trim((string) $form_state->getValue('font_name'));
+    if ($font_name === '') {
+      $form_state->setErrorByName('font_name', $this->t('Font family name is required.'));
+    }
+
+    $icons_source_dir = trim((string) $form_state->getValue(['tooling', 'icons_source_dir']));
+    if ($has_bootstrap && $icons_source_dir === '') {
+      $form_state->setErrorByName('tooling][icons_source_dir', $this->t('Bootstrap Icons source directory is required when Bootstrap icons are selected.'));
+    }
+
+    $fontawesome_icons_source_dir = trim((string) $form_state->getValue(['tooling', 'fontawesome_icons_source_dir']));
+    if ($has_fontawesome && $fontawesome_icons_source_dir === '') {
+      $form_state->setErrorByName('tooling][fontawesome_icons_source_dir', $this->t('Font Awesome SVG source directory is required when Font Awesome icons are selected.'));
+    }
+
+    $generator_command = trim((string) $form_state->getValue(['tooling', 'generator_command']));
+    if ($generator_command === '') {
+      $form_state->setErrorByName('tooling][generator_command', $this->t('Generator command is required.'));
+    }
+
+    $items_per_page = (int) $form_state->getValue(['preview', 'items_per_page']);
+    if ($items_per_page < 10 || $items_per_page > 500) {
+      $form_state->setErrorByName('preview][items_per_page', $this->t('Icons per page must be between 10 and 500.'));
+    }
+  }
+
+  /**
    * Persists configuration from the form state.
    */
   private function saveConfiguration(FormStateInterface $form_state): bool {
@@ -580,36 +701,26 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
 
     $icons = array_values(array_unique(array_filter(array_merge($bootstrap_icons, $fontawesome_icons))));
     if (empty($icons)) {
-      $form_state->setErrorByName('icons_bootstrap', $this->t('Provide at least one Bootstrap icon or one Font Awesome icon.'));
-      $form_state->setErrorByName('icons_fontawesome', $this->t('Provide at least one Bootstrap icon or one Font Awesome icon.'));
       return FALSE;
     }
 
-    $has_bootstrap = !empty($bootstrap_icons);
-    $has_fontawesome = !empty($fontawesome_icons);
-
     $font_name = trim((string) $form_state->getValue('font_name'));
     if ($font_name === '') {
-      $form_state->setErrorByName('font_name', $this->t('Font family name is required.'));
       return FALSE;
     }
 
     $icons_source_dir = trim((string) $form_state->getValue(['tooling', 'icons_source_dir']));
-    if ($has_bootstrap && $icons_source_dir === '') {
-      $form_state->setErrorByName('tooling][icons_source_dir', $this->t('Bootstrap Icons source directory is required when Bootstrap icons are selected.'));
-      return FALSE;
-    }
 
     $fontawesome_icons_source_dir = trim((string) $form_state->getValue(['tooling', 'fontawesome_icons_source_dir']));
-    if ($has_fontawesome && $fontawesome_icons_source_dir === '') {
-      $form_state->setErrorByName('tooling][fontawesome_icons_source_dir', $this->t('Font Awesome SVG source directory is required when Font Awesome icons are selected.'));
-      return FALSE;
-    }
 
     $generator_command = trim((string) $form_state->getValue(['tooling', 'generator_command']));
     if ($generator_command === '') {
-      $form_state->setErrorByName('tooling][generator_command', $this->t('Generator command is required.'));
       return FALSE;
+    }
+
+    $items_per_page = (int) $form_state->getValue(['preview', 'items_per_page']);
+    if ($items_per_page < 10 || $items_per_page > 500) {
+      $items_per_page = 50;
     }
 
     $editable = $this->configFactory()->getEditable('custom_bootstrap_icon_font.settings');
@@ -623,6 +734,7 @@ final class CustomBootstrapIconFontGenerateForm extends ConfigFormBase {
       ->set('fontawesome_icons', $fontawesome_icons)
       ->set('codepoints', $codepoints)
       ->set('font_name', $font_name)
+      ->set('preview_items_per_page', $items_per_page)
       ->set('icons_source_dir', $icons_source_dir)
       ->set('fontawesome_icons_source_dir', $fontawesome_icons_source_dir)
       ->set('generator_command', $generator_command)

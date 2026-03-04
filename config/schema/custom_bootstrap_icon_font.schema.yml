@@ -32,6 +32,9 @@ custom_bootstrap_icon_font.settings:
     generator_command:
       type: string
       label: 'Font generator command (fantasticon)'
+    preview_items_per_page:
+      type: integer
+      label: 'Icons preview items per page'
     version:
       type: integer
       label: 'Asset version'
